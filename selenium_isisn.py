@@ -1,12 +1,14 @@
 import os
 import time
 import string
+import random
 import pandas as pd
 import subprocess as sp
 from selenium import webdriver
 from PIL import Image
 from PIL import ImageEnhance
 
+random.seed(1024)
 
 os.environ["TESSDATA_PREFIX"] = os.path.join(os.getcwd(), "tesseract-4.0.0-alpha")
 
@@ -39,9 +41,9 @@ def get_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
     element = dict()
 
     # 填写申请代码
-    element['subjectCode'] = driver.find_element_by_css_selector('#f_subjectCode_hideId')
+    element['subjectCode'] = driver.find_element_by_id('f_subjectCode_hideId')
     driver.execute_script('arguments[0].value = arguments[1]', element['subjectCode'], subject_code)
-    element['subjectName'] = driver.find_element_by_css_selector('#f_subjectCode_hideName')
+    element['subjectName'] = driver.find_element_by_id('f_subjectCode_hideName')
     driver.execute_script(
         'arguments[0].value = arguments[1]',
         element['subjectName'],
@@ -59,6 +61,7 @@ def get_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
         '//select[@id="f_year"]/option[text()="{0}"]'.format(year)
     )
     element['year'].click()
+    codefail = 0
 
     while True:
         # checkcode
@@ -72,20 +75,52 @@ def get_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
         # click submit
         driver.find_element_by_css_selector('.button_an').click()
         if driver.page_source.find('检索结果') > 0:
+            # successfully get result
             if driver.page_source.find('id="dataGrid"') > 0:
-                with open(out_file, 'ab') as f:
-                    f.write(
-                        '\n'.join(
-                            ','.join(
-                                [year, grant, subject_code] + x.split(' ')
-                            ) for x in driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
-                        ).encode('utf-8')
-                    )
-                if int(driver.find_element_by_css_selector('#sp_1_TopBarMnt').text) > 1:
-                    pass
+                # there are entries
+                next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
+                while next_button_class.find('ui-state-disabled') == -1:
+                    with open(out_file, 'ab') as f:
+                        table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+                        f.write(
+                            '\n'.join(
+                                ','.join(
+                                    [year, grant, subject_code] + x.split(' ')
+                                ) for x in table_data
+                            ).encode('utf-8')
+                        )
+                        f.write('\n'.encode('utf-8'))
+                    next_code_fail = 0
+                    next_code_wrong = True
+                    while next_code_wrong:
+                        # next page checkcode
+                        nextpage_checkcode_img = driver.find_element_by_id('img_checkcode')
+                        nextpage_checkcode_img.screenshot('captcha_page.png')
+                        nextpage_captcha = orc('captcha_page.png')
+
+                        captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
+                        driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
+                        driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
+                        next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+                        if table_data[0] != next_table_data[0]:
+                            next_code_wrong = False
+                        else:
+                            next_code_fail += 1
+                            if next_code_fail > 2:
+                                time.sleep(random.uniform(5, 10))
+                                next_code_fail = 0
+                            else:
+                                time.sleep(random.uniform(0, 3))
+                                #nextpage_checkcode_img.click()
             break
         else:
-            time.sleep(2)
+            # code wrong
+            codefail += 1
+            if codefail > 2:
+                time.sleep(random.uniform(5, 10))
+                codefail = 0
+            else:
+                time.sleep(random.uniform(0, 3))
             element['captcha_image'].click()
 
 
@@ -105,4 +140,4 @@ info['year'] = '2016'
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
 
-get_grant_info('2016', 'A01', '数学', '面上项目', ff, 're.csv')
+get_grant_info('2016', 'A01', '数学', '面上项目', ff, 're2.csv')

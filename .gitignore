@@ -1,6 +1,8 @@
 .idea
+*.png
 *.json
 *.html
+*.csv
 *.txt
 *.jpg
 # Byte-compiled / optimized / DLL files

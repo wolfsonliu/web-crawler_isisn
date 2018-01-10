@@ -36,7 +36,46 @@ def turn_page(driver):
     element = dict()
 
 
-def get_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
+def get_grant_info(year, subject_code, grant, driver, out_file):
+    if driver.page_source.find('id="dataGrid"') > 0:
+        # there are entries
+        next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
+        while next_button_class.find('ui-state-disabled') == -1:
+            with open(out_file, 'ab') as f:
+                table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+                f.write(
+                    '\n'.join(
+                        ','.join(
+                            [year, grant, subject_code] + x.split(' ')
+                        ) for x in table_data
+                    ).encode('utf-8')
+                )
+                f.write('\n'.encode('utf-8'))
+            next_code_fail = 0
+            next_code_wrong = True
+            while next_code_wrong:
+                # next page checkcode
+                nextpage_checkcode_img = driver.find_element_by_id('img_checkcode')
+                nextpage_checkcode_img.screenshot('captcha_page.png')
+                nextpage_captcha = orc('captcha_page.png')
+
+                captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
+                driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
+                driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
+                next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+                if table_data[0] != next_table_data[0]:
+                    next_code_wrong = False
+                else:
+                    next_code_fail += 1
+                    if next_code_fail > 2:
+                        time.sleep(random.uniform(5, 10))
+                        next_code_fail = 0
+                    else:
+                        time.sleep(random.uniform(0, 3))
+                        # nextpage_checkcode_img.click()
+
+
+def search_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
     driver.get('https://isisn.nsfc.gov.cn/egrantindex/funcindex/prjsearch-list?locale=zh_CN')
     element = dict()
 
@@ -76,42 +115,7 @@ def get_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
         driver.find_element_by_css_selector('.button_an').click()
         if driver.page_source.find('检索结果') > 0:
             # successfully get result
-            if driver.page_source.find('id="dataGrid"') > 0:
-                # there are entries
-                next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
-                while next_button_class.find('ui-state-disabled') == -1:
-                    with open(out_file, 'ab') as f:
-                        table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
-                        f.write(
-                            '\n'.join(
-                                ','.join(
-                                    [year, grant, subject_code] + x.split(' ')
-                                ) for x in table_data
-                            ).encode('utf-8')
-                        )
-                        f.write('\n'.encode('utf-8'))
-                    next_code_fail = 0
-                    next_code_wrong = True
-                    while next_code_wrong:
-                        # next page checkcode
-                        nextpage_checkcode_img = driver.find_element_by_id('img_checkcode')
-                        nextpage_checkcode_img.screenshot('captcha_page.png')
-                        nextpage_captcha = orc('captcha_page.png')
-
-                        captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
-                        driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
-                        driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
-                        next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
-                        if table_data[0] != next_table_data[0]:
-                            next_code_wrong = False
-                        else:
-                            next_code_fail += 1
-                            if next_code_fail > 2:
-                                time.sleep(random.uniform(5, 10))
-                                next_code_fail = 0
-                            else:
-                                time.sleep(random.uniform(0, 3))
-                                #nextpage_checkcode_img.click()
+            get_grant_info(year, subject_code, grant, driver, out_file)
             break
         else:
             # code wrong
@@ -140,4 +144,47 @@ info['year'] = '2016'
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
 
-get_grant_info('2016', 'A01', '数学', '面上项目', ff, 're2.csv')
+search_grant_info('2016', 'A01', '数学', '面上项目', ff, 're.csv')
+
+driver = ff
+out_file = 're.csv'
+year = '2016'
+grant = '面上项目'
+subject_code = 'A01'
+
+if driver.page_source.find('id="dataGrid"') > 0:
+    # there are entries
+    next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
+    while next_button_class.find('ui-state-disabled') == -1:
+        with open(out_file, 'ab') as f:
+            table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+            f.write(
+                '\n'.join(
+                    ','.join(
+                        [year, grant, subject_code] + x.split(' ')
+                    ) for x in table_data
+                ).encode('utf-8')
+            )
+            f.write('\n'.encode('utf-8'))
+        next_code_fail = 0
+        next_code_wrong = True
+        while next_code_wrong:
+            # next page checkcode
+            nextpage_checkcode_img = driver.find_element_by_id('img_checkcode')
+            nextpage_checkcode_img.screenshot('captcha_page.png')
+            nextpage_captcha = orc('captcha_page.png')
+
+            captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
+            driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
+            driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
+            next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+            if table_data[0] != next_table_data[0]:
+                next_code_wrong = False
+            else:
+                next_code_fail += 1
+                if next_code_fail > 2:
+                    time.sleep(random.uniform(5, 10))
+                    next_code_fail = 0
+                else:
+                    time.sleep(random.uniform(0, 3))
+                    # nextpage_checkcode_img.click()

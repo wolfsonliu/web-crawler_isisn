@@ -8,6 +8,7 @@ from selenium import webdriver
 from PIL import Image
 from PIL import ImageEnhance
 
+# 张书红 19711108
 random.seed(1024)
 
 os.environ["TESSDATA_PREFIX"] = os.path.join(os.getcwd(), "tesseract-4.0.0-alpha")
@@ -54,25 +55,34 @@ def get_grant_info(year, subject_code, grant, driver, out_file):
             next_code_fail = 0
             next_code_wrong = True
             while next_code_wrong:
+                # captcha loop
                 # next page checkcode
                 nextpage_checkcode_img = driver.find_element_by_id('img_checkcode')
                 nextpage_checkcode_img.screenshot('captcha_page.png')
-                nextpage_captcha = orc('captcha_page.png')
-
-                captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
-                driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
-                driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
-                next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
-                if table_data[0] != next_table_data[0]:
-                    next_code_wrong = False
-                else:
-                    next_code_fail += 1
-                    if next_code_fail > 2:
-                        time.sleep(random.uniform(5, 10))
-                        next_code_fail = 0
+                try:
+                    nextpage_captcha = orc('captcha_page.png')
+                    captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
+                    driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
+                    driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
+                    next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
+                    if table_data[0] != next_table_data[0]:
+                        # if new page saved stop captcha loop
+                        next_code_wrong = False
                     else:
-                        time.sleep(random.uniform(0, 3))
-                        # nextpage_checkcode_img.click()
+                        next_code_fail += 1
+                        if next_code_fail > 2:
+                            time.sleep(random.uniform(5, 10))
+                            next_code_fail = 0
+                        else:
+                            time.sleep(random.uniform(0, 3))
+                            if random.randint(0, 10) > 5:
+                                nextpage_checkcode_img.click()
+                except UnicodeDecodeError:
+                    # incase the orc have gbk codec
+                    nextpage_checkcode_img.click()
+
+
+
 
 
 def search_grant_info(year, subject_code, subject_name, grant,  driver, out_file):
@@ -135,7 +145,7 @@ grants = [
     '海外及港澳学者合作研究基金', '国家基础科学人才培养基金', '国家重大科研仪器设备研制专项', '国家重大科研仪器研制项目',
     '优秀青年科学基金项目', '应急管理项目', '科学中心项目'
 ]
-subjects = pd.read_csv('subject')
+subjects = pd.read_csv('subject.csv')
 
 info = dict()
 info['subjectCode'] = 'B0201'
@@ -144,47 +154,14 @@ info['year'] = '2016'
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
 
-search_grant_info('2016', 'A01', '数学', '面上项目', ff, 're.csv')
+search_grant_info('2010', 'A01', '数学', '面上项目', ff, 'ms2010.csv')
+# get_grant_info('2014', 'A01', '面上项目', ff, '2014面上.tsv')
 
-driver = ff
-out_file = 're.csv'
-year = '2016'
-grant = '面上项目'
-subject_code = 'A01'
-
-if driver.page_source.find('id="dataGrid"') > 0:
-    # there are entries
-    next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
-    while next_button_class.find('ui-state-disabled') == -1:
-        with open(out_file, 'ab') as f:
-            table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
-            f.write(
-                '\n'.join(
-                    ','.join(
-                        [year, grant, subject_code] + x.split(' ')
-                    ) for x in table_data
-                ).encode('utf-8')
-            )
-            f.write('\n'.encode('utf-8'))
-        next_code_fail = 0
-        next_code_wrong = True
-        while next_code_wrong:
-            # next page checkcode
-            nextpage_checkcode_img = driver.find_element_by_id('img_checkcode')
-            nextpage_checkcode_img.screenshot('captcha_page.png')
-            nextpage_captcha = orc('captcha_page.png')
-
-            captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
-            driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
-            driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
-            next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
-            if table_data[0] != next_table_data[0]:
-                next_code_wrong = False
-            else:
-                next_code_fail += 1
-                if next_code_fail > 2:
-                    time.sleep(random.uniform(5, 10))
-                    next_code_fail = 0
+with open('good.csv', 'wb') as good:
+    with open('bad.csv', 'wb') as bad:
+        with open('mianshang2013.tsv', 'rb') as f:
+            for line in f:
+                if len(line.decode('utf-8').split('\t')) > 11:
+                    bad.write(line)
                 else:
-                    time.sleep(random.uniform(0, 3))
-                    # nextpage_checkcode_img.click()
+                    good.write(line)

@@ -33,15 +33,11 @@ def orc(img, tesseract=os.path.join(os.getcwd(), 'tesseract-4.0.0-alpha/tesserac
     return words
 
 
-def turn_page(driver):
-    element = dict()
-
-
 def get_grant_info(year, subject_code, grant, driver, out_file):
     if driver.page_source.find('id="dataGrid"') > 0:
         # there are entries
         next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
-        while next_button_class.find('ui-state-disabled') == -1:
+        while True:
             with open(out_file, 'ab') as f:
                 table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
                 f.write(
@@ -52,6 +48,10 @@ def get_grant_info(year, subject_code, grant, driver, out_file):
                     ).encode('utf-8')
                 )
                 f.write('\n'.encode('utf-8'))
+            next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
+            # whether has next page
+            if next_button_class.find('ui-state-disabled') == -1:
+                break
             next_code_fail = 0
             next_code_wrong = True
             while next_code_wrong:
@@ -63,7 +63,7 @@ def get_grant_info(year, subject_code, grant, driver, out_file):
                     nextpage_captcha = orc('captcha_page.png')
                     captcha_entry = driver.find_element_by_xpath('//input[@id="checkCode"]')
                     driver.execute_script('arguments[0].value = arguments[1]', captcha_entry, nextpage_captcha)
-                    driver.find_element_by_css_selector('#next_t_TopBarMnt').click()
+                    driver.find_element_by_css_selector('#next_t_TopBarMnt').click()  # next page
                     next_table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
                     if table_data[0] != next_table_data[0]:
                         # if new page saved stop captcha loop
@@ -140,7 +140,7 @@ def search_grant_info(year, subject_code, subject_name, grant,  driver, out_file
 
 years = [str(x) for x in range(1997, 2019)]
 grants = [
-    '面上项目', '重点项目', '重大项目', '重大研究计划', '国家杰出青年科学基金', '创新群体研究项目',
+    '面上项目', '重点项目', '重大项目', '重大研究计划', '国家杰出青年科学基金', '创新研究群体项目',
     '国际(地区)合作与交流项目', '专项基金项目', '联合基金项目', '青年科学基金项目', '地区科学基金项目',
     '海外及港澳学者合作研究基金', '国家基础科学人才培养基金', '国家重大科研仪器设备研制专项', '国家重大科研仪器研制项目',
     '优秀青年科学基金项目', '应急管理项目', '科学中心项目'
@@ -153,15 +153,14 @@ info['grant'] = '重点项目'
 info['year'] = '2016'
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
-
-search_grant_info('2010', 'A01', '数学', '面上项目', ff, 'ms2010.csv')
+search_grant_info('2015', 'A01', '数学', '国际(地区)合作与交流项目', ff, 'gjdqhzyjl2015.csv')
 # get_grant_info('2014', 'A01', '面上项目', ff, '2014面上.tsv')
 
-with open('good.csv', 'wb') as good:
-    with open('bad.csv', 'wb') as bad:
-        with open('mianshang2013.tsv', 'rb') as f:
-            for line in f:
-                if len(line.decode('utf-8').split('\t')) > 11:
-                    bad.write(line)
-                else:
-                    good.write(line)
+for x in ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013']:
+    search_grant_info(x, 'A01', '数学', '专项基金项目', ff, 'zxjj' + x + '.csv')
+
+
+ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
+
+for x in ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013']:
+    search_grant_info(x, 'A01', '数学', '青年科学基金项目', ff, 'qnkxjj' + x + '.csv')

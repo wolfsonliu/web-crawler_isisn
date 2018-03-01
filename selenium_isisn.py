@@ -21,9 +21,9 @@ def orc(img, tesseract=os.path.join(os.getcwd(), 'tesseract-4.0.0-alpha/tesserac
     contrast = ImageEnhance.Contrast(gray)
     ctgray = contrast.enhance(3.0)
     bw = ctgray.point(lambda x: 0 if x < 1 else 255)
-    bw.save('captcha_threasholded.jpg')
+    bw.save('captcha_threasholded.png')
     process = sp.Popen(
-        [tesseract, 'captcha_threasholded.jpg', 'out', '--psm 7', '--tessdata-dir ' + os.path.dirname(tesseract)],
+        [tesseract, 'captcha_threasholded.png', 'out', '--psm 7', '--tessdata-dir ' + os.path.dirname(tesseract)],
         shell=True
     )
     process.wait()
@@ -36,7 +36,6 @@ def orc(img, tesseract=os.path.join(os.getcwd(), 'tesseract-4.0.0-alpha/tesserac
 def get_grant_info(year, subject_code, grant, driver, out_file):
     if driver.page_source.find('id="dataGrid"') > 0:
         # there are entries
-        next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
         while True:
             with open(out_file, 'ab') as f:
                 table_data = driver.find_element_by_xpath('//table[@id="dataGrid"]').text.split('\n')
@@ -50,7 +49,7 @@ def get_grant_info(year, subject_code, grant, driver, out_file):
                 f.write('\n'.encode('utf-8'))
             next_button_class = driver.find_element_by_id('next_t_TopBarMnt').get_attribute('class')
             # whether has next page
-            if next_button_class.find('ui-state-disabled') == -1:
+            if next_button_class.find('ui-state-disabled') != -1:
                 break
             next_code_fail = 0
             next_code_wrong = True
@@ -80,8 +79,6 @@ def get_grant_info(year, subject_code, grant, driver, out_file):
                 except UnicodeDecodeError:
                     # incase the orc have gbk codec
                     nextpage_checkcode_img.click()
-
-
 
 
 
@@ -153,14 +150,14 @@ info['grant'] = '重点项目'
 info['year'] = '2016'
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
-search_grant_info('2015', 'A01', '数学', '国际(地区)合作与交流项目', ff, 'gjdqhzyjl2015.csv')
+# search_grant_info('2015', 'A01', '数学', '国际(地区)合作与交流项目', ff, 'gjdqhzyjl2015.csv')
 # get_grant_info('2014', 'A01', '面上项目', ff, '2014面上.tsv')
 
-for x in ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013']:
-    search_grant_info(x, 'A01', '数学', '专项基金项目', ff, 'zxjj' + x + '.csv')
+for x in range(2002, 2009):
+    search_grant_info('{0}'.format(x), 'A01', '数学', '专项基金项目', ff, 'hwjgaxzhzyj{0}.csv'.format(x))
 
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
 
-for x in ['2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013']:
-    search_grant_info(x, 'A01', '数学', '青年科学基金项目', ff, 'qnkxjj' + x + '.csv')
+for x in[2017]:# range(2001, 2014):
+    search_grant_info('{0}'.format(x), 'A01', '数学', '青年科学基金项目', ff, 'qnkxjj{0}--.csv'.format(x))

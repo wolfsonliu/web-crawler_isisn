@@ -154,10 +154,10 @@ ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
 # get_grant_info('2014', 'A01', '面上项目', ff, '2014面上.tsv')
 
 for x in range(2002, 2009):
-    search_grant_info('{0}'.format(x), 'A01', '数学', '专项基金项目', ff, 'hwjgaxzhzyj{0}.csv'.format(x))
+    search_grant_info('{0}'.format(x), 'A01', '数学', '项目', ff, 'hwjgaxzhzyj{0}.csv'.format(x))
 
 
 ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
 
-for x in[2017]:# range(2001, 2014):
-    search_grant_info('{0}'.format(x), 'A01', '数学', '青年科学基金项目', ff, 'qnkxjj{0}--.csv'.format(x))
+for x in[2001, 2002, 2003, 2004, 2005, 2006]:# range(2001, 2014):
+    search_grant_info('{0}'.format(x), 'A01', '数学', '面上项目', ff, 'ms{0}--.csv'.format(x))

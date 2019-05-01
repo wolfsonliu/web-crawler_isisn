@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import string
 import random
@@ -8,13 +9,20 @@ from selenium import webdriver
 from PIL import Image
 from PIL import ImageEnhance
 
-# 张书红 19711108
 random.seed(1024)
 
-os.environ["TESSDATA_PREFIX"] = os.path.join(os.getcwd(), "tesseract-4.0.0-alpha")
+if sys.platform == 'win32':
+    os.environ["TESSDATA_PREFIX"] = os.path.join(
+        os.getcwd(), "tesseract-4.0.0-alpha"
+    )
+    tesseract_path = os.path.join(
+        os.getcwd(), 'tesseract-4.0.0-alpha/tesseract.exe'
+    )
+elif sys.platform == 'linux':
+    tesseract_path = 'tesseract'
 
 
-def orc(img, tesseract=os.path.join(os.getcwd(), 'tesseract-4.0.0-alpha/tesseract.exe')):
+def orc(img, tesseract=tesseract_path):
     if isinstance(img, str):
         img = Image.open(img)
     gray = img.convert('L')
@@ -22,10 +30,15 @@ def orc(img, tesseract=os.path.join(os.getcwd(), 'tesseract-4.0.0-alpha/tesserac
     ctgray = contrast.enhance(3.0)
     bw = ctgray.point(lambda x: 0 if x < 1 else 255)
     bw.save('captcha_threasholded.png')
-    process = sp.Popen(
-        [tesseract, 'captcha_threasholded.png', 'out', '--psm 7', '--tessdata-dir ' + os.path.dirname(tesseract)],
-        shell=True
-    )
+    if sys.platform == 'win32':
+        joblist = [tesseract, 'captcha_threasholded.png', 'out', '--psm 7', '--tessdata-dir ' + os.path.dirname(tesseract)]
+        process = sp.Popen(
+            joblist,
+            shell=True
+        )
+    elif sys.platform == 'linux':
+        joblist = [tesseract, 'captcha_threasholded.png', 'out', '--psm 7']
+        process = sp.Popen(joblist)
     process.wait()
     with open('out.txt', 'r') as f:
         words = ''.join(list(f.readlines())).rstrip()
@@ -136,28 +149,23 @@ def search_grant_info(year, subject_code, subject_name, grant,  driver, out_file
 
 
 years = [str(x) for x in range(1997, 2019)]
-grants = [
-    '面上项目', '重点项目', '重大项目', '重大研究计划', '国家杰出青年科学基金', '创新研究群体项目',
-    '国际(地区)合作与交流项目', '专项基金项目', '联合基金项目', '青年科学基金项目', '地区科学基金项目',
-    '海外及港澳学者合作研究基金', '国家基础科学人才培养基金', '国家重大科研仪器设备研制专项', '国家重大科研仪器研制项目',
-    '优秀青年科学基金项目', '应急管理项目', '科学中心项目'
-]
-subjects = pd.read_csv('subject.csv')
 
-info = dict()
-info['subjectCode'] = 'B0201'
-info['grant'] = '重点项目'
-info['year'] = '2016'
+grants = [ '面上项目', '重点项目', '重大项目', '重大研究计划',
+           '国家杰出青年科学基金', '创新研究群体项目', '国际(地区)合作与交流项目',
+           '专项基金项目', '联合基金项目', '青年科学基金项目',
+           '地区科学基金项目', '海外及港澳学者合作研究基金',
+           '国家基础科学人才培养基金', '国家重大科研仪器设备研制专项',
+           '国家重大科研仪器研制项目', '优秀青年科学基金项目',
+           '应急管理项目', '科学中心项目' ]
 
-ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
-# search_grant_info('2015', 'A01', '数学', '国际(地区)合作与交流项目', ff, 'gjdqhzyjl2015.csv')
-# get_grant_info('2014', 'A01', '面上项目', ff, '2014面上.tsv')
+if sys.platform == 'win32':
+    ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
+elif sys.platform == 'linux':
+    ff = webdriver.Firefox(executable_path=r'./geckodriver')
 
-for x in range(2002, 2009):
-    search_grant_info('{0}'.format(x), 'A01', '数学', '项目', ff, 'hwjgaxzhzyj{0}.csv'.format(x))
-
-
-ff = webdriver.Firefox(executable_path=r'./geckodriver.exe')
-
-for x in[2001, 2002, 2003, 2004, 2005, 2006]:# range(2001, 2014):
-    search_grant_info('{0}'.format(x), 'A01', '数学', '面上项目', ff, 'ms{0}--.csv'.format(x))
+for name in grants[14:]:
+    for x in range(2018, 2019):
+        search_grant_info(
+            '{0}'.format(x), 'A01', '数学', name,
+            ff, '{0}_{1}.csv'.format(name,x)
+        )
